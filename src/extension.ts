@@ -6,6 +6,7 @@ import {
 	stageAll,
 	commit,
 	push,
+	getGitErrorMessage,
 } from './git';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -101,10 +102,11 @@ export function activate(context: vscode.ExtensionContext) {
 			// Commit
 			try {
 				await commit(cwd, message);
-			} catch (result: any) {
-				const errorMessage =
-					result.stderr?.trim() ||
-					'Commit failed.';
+			} catch (error) {
+				const errorMessage = getGitErrorMessage(
+					error,
+					'Commit failed.'
+				);
 
 				vscode.window.showErrorMessage(
 					`Commit.exe: ${errorMessage}`
@@ -128,15 +130,16 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showInformationMessage(
 					'Commit.exe: Commit and push completed successfully.'
 				);
-			} catch (result: any) {
-				const errorMessage =
-					result.stderr?.trim() ||
-					'Push failed.';
+			} catch (error) {
+			const errorMessage = getGitErrorMessage(
+				error,
+				'Push failed.'
+			);
 
-				vscode.window.showErrorMessage(
-					`Commit.exe: Commit created, but push failed: ${errorMessage}`
-				);
-			}
+			vscode.window.showErrorMessage(
+				`Commit.exe: Commit created, but push failed: ${errorMessage}`
+			);
+		}
 		}
 	);
 

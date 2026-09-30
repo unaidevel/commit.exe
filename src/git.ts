@@ -1,6 +1,12 @@
 import { execFile } from 'child_process';
 
 
+export interface GitCommandError {
+	error: Error;
+	stdout: string;
+	stderr: string;
+}
+
 export function runGitCommand(
     command: string,
     args: string[],
@@ -66,4 +72,23 @@ export async function commit(
 
 export async function push(cwd: string): Promise<void> {
 	await runGitCommand('push', [], cwd);
+}
+
+export function getGitErrorMessage(
+	error: unknown,
+	fallback: string
+): string {
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'stderr' in error
+	) {
+		const stderr = (error as { stderr?: string }).stderr;
+
+		if (stderr?.trim()) {
+			return stderr.trim();
+		}
+	}
+
+	return fallback;
 }
