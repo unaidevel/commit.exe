@@ -1,26 +1,153 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { execFile } from 'child_process';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+function runGitCommand(
+	command: string,
+	args: string[],
+	cwd: string
+): Promise<{ stdout: string; stderr: string }> {
+	return new Promise((resolve, reject) => {
+		execFile('git', [command, ...args], { cwd }, (error, stdout, stderr) => {
+			if (error) {
+				reject({
+					error,
+					stdout,
+					stderr,
+				});
+				return;
+			}
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "commit-exe" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('commit-exe.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from commit.exe!');
+			resolve({
+				stdout,
+				stderr,
+			});
+		});
 	});
+}
+
+export function activate(context: vscode.ExtensionContext) {
+	const disposable = vscode.commands.registerCommand(
+		'commit-exe.commit',
+		async () => {
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+
+			if (!workspaceFolder) {
+				vscode.window.showErrorMessage(
+					'Commit.exe: No workspace is open.'
+				);
+				return;
+			}
+
+			const cwd = workspaceFolder.uri.fsPath;
+
+			// Check if this is a Git repository
+			try {
+				await runGitCommand(
+					'rev-parse',
+					['--is-inside-work-tree'],
+					cwd
+				);
+			} catch {
+				vscode.window.showErrorMessage(
+					'Commit.exe: The current workspace is not a Git repository.'
+				);
+				return;
+			}
+
+			// Check for staged changes
+			let stagedChanges = '';
+
+			try {
+				const result = await runGitCommand(
+					'diff',
+					['--cached', '--name-only'],
+					cwd
+				);
+
+				stagedChanges = result.stdout.trim();
+			} catch {
+				vscode.window.showErrorMessage(
+					'Commit.exe: Failed to check Git status.'
+				);
+				return;
+			}
+
+			// If nothing is staged, stage all changes
+			if (!stagedChanges) {
+				try {
+					await runGitCommand('add', ['.'], cwd);
+				} catch {
+					vscode.window.showErrorMessage(
+						'Commit.exe: Failed to stage changes.'
+					);
+					return;
+				}
+			}
+
+			// Check whether there are actually changes to commit
+			try {
+				const result = await runGitCommand(
+					'diff',
+					['--cached', '--name-only'],
+					cwd
+				);
+
+				if (!result.stdout.trim()) {
+					vscode.window.showInformationMessage(
+						'Commit.exe: There are no changes to commit.'
+					);
+					return;
+				}
+			} catch {
+				vscode.window.showErrorMessage(
+					'Commit.exe: Failed to check staged changes.'
+				);
+				return;
+			}
+
+			// Ask for commit message
+			const message = await vscode.window.showInputBox({
+				prompt: 'Enter your commit message',
+				placeHolder: 'e.g. Add user authentication',
+				ignoreFocusOut: true,
+			});
+
+			if (message === undefined) {
+				return;
+			}
+
+			if (!message.trim()) {
+				vscode.window.showErrorMessage(
+					'Commit.exe: Commit message cannot be empty.'
+				);
+				return;
+			}
+
+			// Commit
+			try {
+				await runGitCommand(
+					'commit',
+					['-m', message],
+					cwd
+				);
+			} catch (result: any) {
+				const errorMessage =
+					result.stderr?.trim() ||
+					'Commit failed.';
+
+				vscode.window.showErrorMessage(
+					`Commit.exe: ${errorMessage}`
+				);
+				return;
+			}
+
+			vscode.window.showInformationMessage(
+				'Commit.exe: Commit created successfully.'
+			);
+		}
+	);
 
 	context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}
