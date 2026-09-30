@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import { execFile } from 'child_process';
 
+interface GitCommandError {
+	error: Error;
+	stdout: string;
+	stderr: string;
+}
+
 function runGitCommand(
 	command: string,
 	args: string[],
@@ -39,6 +45,17 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			const cwd = workspaceFolder.uri.fsPath;
+
+
+			// Check if Git is installed
+			try {
+				await runGitCommand('--version', [], cwd);
+			} catch {
+				vscode.window.showErrorMessage(
+					'Commit.exe: Git is not installed or could not be found.'
+				);
+				return;
+			}
 
 			// Check if this is a Git repository
 			try {
