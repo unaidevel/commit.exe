@@ -141,9 +141,31 @@ export function activate(context: vscode.ExtensionContext) {
 				return;
 			}
 
-			vscode.window.showInformationMessage(
-				'Commit.exe: Commit created successfully.'
-			);
+			const config = vscode.workspace.getConfiguration('commit-exe');
+			const autoPush = config.get<boolean>('autoPush', true);
+
+			if (!autoPush) {
+				vscode.window.showInformationMessage(
+					'Commit.exe: Commit created successfully.'
+				);
+				return;
+			}
+
+			try {
+				await runGitCommand('push', [], cwd);
+
+				vscode.window.showInformationMessage(
+					'Commit.exe: Commit and push completed successfully.'
+				);
+			} catch (result: any) {
+				const errorMessage =
+					result.stderr?.trim() ||
+					'Push failed.';
+
+				vscode.window.showErrorMessage(
+					`Commit.exe: Commit created, but push failed: ${errorMessage}`
+				);
+			}
 		}
 	);
 
