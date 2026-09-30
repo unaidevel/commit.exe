@@ -1,35 +1,14 @@
 import * as vscode from 'vscode';
-import { execFile } from 'child_process';
+import {
+	runGitCommand,
+	isGitRepository,
+	hasStagedChanges,
+	stageAll,
+	commit,
+	push,
+} from './git';
 
-interface GitCommandError {
-	error: Error;
-	stdout: string;
-	stderr: string;
-}
 
-function runGitCommand(
-	command: string,
-	args: string[],
-	cwd: string
-): Promise<{ stdout: string; stderr: string }> {
-	return new Promise((resolve, reject) => {
-		execFile('git', [command, ...args], { cwd }, (error, stdout, stderr) => {
-			if (error) {
-				reject({
-					error,
-					stdout,
-					stderr,
-				});
-				return;
-			}
-
-			resolve({
-				stdout,
-				stderr,
-			});
-		});
-	});
-}
 
 export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand(
@@ -59,29 +38,18 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Check if this is a Git repository
 			try {
-				await runGitCommand(
-					'rev-parse',
-					['--is-inside-work-tree'],
-					cwd
-				);
-			} catch {
-				vscode.window.showErrorMessage(
-					'Commit.exe: The current workspace is not a Git repository.'
-				);
-				return;
-			}
+				if (!(await isGitRepository(cwd))) {
+					vscode.window.showErrorMessage(
+						'Commit.exe: The current workspace is not a Git repository.'
+					);
+					return;
+				}
 
 			// Check for staged changes
-			let stagedChanges = '';
+			let stagedChanges = false;
 
 			try {
-				const result = await runGitCommand(
-					'diff',
-					['--cached', '--name-only'],
-					cwd
-				);
-
-				stagedChanges = result.stdout.trim();
+				stagedChanges = await hasStagedChanges(cwd);
 			} catch {
 				vscode.window.showErrorMessage(
 					'Commit.exe: Failed to check Git status.'
@@ -142,11 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Commit
 			try {
-				await runGitCommand(
-					'commit',
-					['-m', message],
-					cwd
-				);
+				await commit(cwd, message);
 			} catch (result: any) {
 				const errorMessage =
 					result.stderr?.trim() ||
@@ -169,7 +133,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			try {
-				await runGitCommand('push', [], cwd);
+				await push(cwd);
 
 				vscode.window.showInformationMessage(
 					'Commit.exe: Commit and push completed successfully.'
