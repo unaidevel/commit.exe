@@ -8,8 +8,6 @@ import {
 	push,
 } from './git';
 
-
-
 export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand(
 		'commit-exe.commit',
@@ -25,7 +23,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 			const cwd = workspaceFolder.uri.fsPath;
 
-
 			// Check if Git is installed
 			try {
 				await runGitCommand('--version', [], cwd);
@@ -37,13 +34,12 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 
 			// Check if this is a Git repository
-			try {
-				if (!(await isGitRepository(cwd))) {
-					vscode.window.showErrorMessage(
-						'Commit.exe: The current workspace is not a Git repository.'
-					);
-					return;
-				}
+			if (!(await isGitRepository(cwd))) {
+				vscode.window.showErrorMessage(
+					'Commit.exe: The current workspace is not a Git repository.'
+				);
+				return;
+			}
 
 			// Check for staged changes
 			let stagedChanges = false;
@@ -60,7 +56,7 @@ export function activate(context: vscode.ExtensionContext) {
 			// If nothing is staged, stage all changes
 			if (!stagedChanges) {
 				try {
-					await runGitCommand('add', ['.'], cwd);
+					await stageAll(cwd);
 				} catch {
 					vscode.window.showErrorMessage(
 						'Commit.exe: Failed to stage changes.'
@@ -71,13 +67,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 			// Check whether there are actually changes to commit
 			try {
-				const result = await runGitCommand(
-					'diff',
-					['--cached', '--name-only'],
-					cwd
-				);
-
-				if (!result.stdout.trim()) {
+				if (!(await hasStagedChanges(cwd))) {
 					vscode.window.showInformationMessage(
 						'Commit.exe: There are no changes to commit.'
 					);
