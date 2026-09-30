@@ -1,23 +1,42 @@
 {
   "name": "commit-exe",
-  "displayName": "commit.exe",
-  "description": "Fast commits",
+  "displayName": "Commit.exe",
+  "description": "A fast and simple Git commit and push workflow for VS Code.",
   "version": "0.0.1",
+  "publisher": "unaidevel",
   "engines": {
-    "vscode": "^1.137.0"
+    "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:commit-exe.commit"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "commit-exe.helloWorld",
-        "title": "Hello World"
+        "command": "commit-exe.commit",
+        "title": "Commit.exe: Commit"
       }
-    ]
+    ],
+    "keybindings": [
+      {
+        "command": "commit-exe.commit",
+        "key": "ctrl+alt+c"
+      }
+    ],
+    "configuration": {
+      "title": "Commit.exe",
+      "properties": {
+        "commit-exe.autoPush": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically push after a successful commit."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -26,19 +45,5 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
-  },
-  "devDependencies": {
-    "@types/vscode": "^1.137.0",
-    "@types/mocha": "^10.0.10",
-    "@types/node": "24.x",
-    "typescript-eslint": "^8.61.1",
-    "eslint": "^10.5.0",
-    "typescript": "^6.0.3",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0"
-  },
-  "overrides": {
-    "diff": "^8.0.4",
-    "serialize-javascript": "^7.0.6"
   }
 }
